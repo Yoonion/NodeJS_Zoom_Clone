@@ -10,10 +10,29 @@ app.use("/public", express.static(__dirname + "/public"));
 app.get("/", (req, res) => res.render("home"));
 app.get("/*", (req, res) => res.redirect("/"));
 
-const handleListen = () => console.log('Listening on localhost:3000');
+//const handleListen = () => console.log('Listening on localhost:3000');
 //app.listen(3000, handleListen);
 
 const server = http.createServer(app); // http server
 const wss = new WebSocket.Server({ server }) // websocket server ON http server
+
+const sockets = []; // who is connection?
+
+wss.on("connection", (socket) => {
+  sockets.push(socket);
+  socket["nickname"] = "Anon"; // no nickname user
+  console.log("Connected to browser !! ");
+  socket.on("close", () => console.log("Disconnected from browser") );
+  socket.on("message", (msg) => {
+    const message = JSON.parse(msg);
+    switch(message.type) {
+      case "new_msg":
+        sockets.forEach( aSocket => aSocket.send(`${socket.nickname}: ${message.payload}`) );
+      case "nickname":
+        socket["nickname"] = message.payload;
+    }
+
+  });
+});
 
 server.listen(3000);
