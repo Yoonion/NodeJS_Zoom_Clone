@@ -1,39 +1,52 @@
-const messageList = document.querySelector("ul");
-const nickForm = document.querySelector("#nick"); // nickname form
-const messageForm = document.querySelector("#message"); // message form
-const socket = new WebSocket(`ws://${window.location.host}`); // connect to backend
+const socket = io();
 
-function makeMsg(type, payload) {
-  const msg = { type, payload };
-  return JSON.stringify(msg);
+const welcome = document.getElementById("welcome");
+const form = welcome.querySelector("form");
+const room = document.getElementById("room");
+
+room.hidden = true;
+
+let roomName;
+
+function addMsg(msg) {
+  const ul = room.querySelector("ul");
+  const li = document.createElement("li");
+  li.innerText = msg;
+  ul.appendChild(li);
 }
 
-socket.addEventListener("open", () => {
-  console.log("Connected to server !! ");
-});
+function showRoom() {
+  welcome.hidden = true;
+  room.hidden = false;
+  const h3 = room.querySelector("h3");
+  h3.innerText = `Room : ${roomName}`;
+  
+  const form = room.querySelector("form");
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const input = room.querySelector("input");
+    socket.emit("new_msg", input.value, roomName, () => {
+      addMsg(`You :  ${input.value}`);
+      input.value = "";
+    });
+  });
 
-socket.addEventListener("message", (message) => {
-  const li = document.createElement("li");
-  li.innerText = message.data;
-  messageList.append(li);
-});
+}
 
-socket.addEventListener("close", () => {
-  console.log("Close server !!");
-});
-
-// message form submit
-messageForm.addEventListener("submit", (event) => {
+form.addEventListener("submit", (event) => {
   event.preventDefault();
-  const input = messageForm.querySelector("input");
-  socket.send(makeMsg("new_msg", input.value)); // frontend form -> backend
+  const input = form.querySelector("input");
+  socket.emit("enter_room", input.value, showRoom);
+  roomName = input.value;
   input.value = "";
 });
 
-// nickname form submit
-nickForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const input = nickForm.querySelector("input");
-  socket.send(makeMsg("nickname", input.value));
-  input.value = "";
+socket.on("welcome", () => {
+  addMsg("someone joined!");
 });
+
+socket.on("bye", () => {
+  addMsg("someone left ㅠㅠ");
+});
+
+socket.on("new_msg", addMsg);

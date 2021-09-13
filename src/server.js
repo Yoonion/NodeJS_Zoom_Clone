@@ -1,5 +1,5 @@
 import http from "http";
-import WebSocket from "ws";
+import SocketIO from "socket.io";
 import express from "express";
 
 const app = express();
@@ -10,29 +10,28 @@ app.use("/public", express.static(__dirname + "/public"));
 app.get("/", (req, res) => res.render("home"));
 app.get("/*", (req, res) => res.redirect("/"));
 
-//const handleListen = () => console.log('Listening on localhost:3000');
-//app.listen(3000, handleListen);
-
 const server = http.createServer(app); // http server
-const wss = new WebSocket.Server({ server }) // websocket server ON http server
+const io = SocketIO(server);
 
-const sockets = []; // who is connection?
+io.on("connection", (socket) => {
 
-wss.on("connection", (socket) => {
-  sockets.push(socket);
-  socket["nickname"] = "Anon"; // no nickname user
-  console.log("Connected to browser !! ");
-  socket.on("close", () => console.log("Disconnected from browser") );
-  socket.on("message", (msg) => {
-    const message = JSON.parse(msg);
-    switch(message.type) {
-      case "new_msg":
-        sockets.forEach( aSocket => aSocket.send(`${socket.nickname}: ${message.payload}`) );
-      case "nickname":
-        socket["nickname"] = message.payload;
-    }
-
+  socket.on("enter_room", (roomName, done) => {
+    socket.join((roomName));
+    done();
+    socket.to(roomName).emit("welcome");
   });
+
+  socket.on("disconnecting", () => {
+    socket.rooms.forEach((room) => {
+      socket.to(room).emit("bye");
+    });
+  });
+
+  socket.on("new_msg", (msg, room, done) => {
+    socket.to(room).emit("new_msg", msg);
+    done();
+  });
+
 });
 
 server.listen(3000);
