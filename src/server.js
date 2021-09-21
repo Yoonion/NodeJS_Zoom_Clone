@@ -13,6 +13,19 @@ app.get("/*", (req, res) => res.redirect("/"));
 const server = http.createServer(app); // http server
 const io = SocketIO(server);
 
+function publicRooms() {
+  const sids = io.sockets.adapter.sids;
+  const rooms = io.sockets.adapter.rooms;
+
+  const publicRooms = [];
+  rooms.forEach((_, key) => {
+    if( sids.get(key) === undefined ) {
+      publicRooms.push(key);
+    }
+  });
+  return publicRooms;
+}
+
 io.on("connection", (socket) => {
 
   socket["nickname"] = "Anon"; // default nickname
@@ -21,6 +34,11 @@ io.on("connection", (socket) => {
     socket.join((roomName));
     done();
     socket.to(roomName).emit("welcome", socket.nickname);
+    io.sockets.emit("room_change", publicRooms()); // message to all connecting sockets
+  });
+
+  socket.on("disconnect", () => {
+    io.sockets.emit("room_change", publicRooms()); // message to all connecting sockets
   });
   
   socket.on("disconnecting", () => {
