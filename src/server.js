@@ -15,14 +15,14 @@ const io = SocketIO(server);
 
 io.on("connection", (socket) => {
 
-  socket["nickname"] = "Anon";
+  socket["nickname"] = "Anon"; // default nickname
 
   socket.on("enter_room", (roomName, done) => {
     socket.join((roomName));
     done();
     socket.to(roomName).emit("welcome", socket.nickname);
   });
-
+  
   socket.on("disconnecting", () => {
     socket.rooms.forEach((room) => {
       socket.to(room).emit("bye", socket.nickname);
