@@ -15,10 +15,14 @@ async function getCameras() {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const cameras = devices.filter(device => device.kind === "videoinput");
+    const currentCamera = myStream.getVideoTracks()[0];
     cameras.forEach(camera => {
       const option = document.createElement("option");
       option.value = camera.deviceId;
       option.innerText = camera.label;
+      if(currentCamera.label === camera.label) { // 맨 처음 선택 되어있는 카메라 select 되도록 하기 위하여
+        option.selected = true;
+      }
       cameraSelect.appendChild(option);
     });
   } catch (e) {
@@ -27,14 +31,24 @@ async function getCameras() {
 }
 
 // media(비디오, 마이크) 불러오기
-async function getMedia() {
+async function getMedia(deviceId) {
+  const initialConstrains = {
+    audio: true,
+    video: { facingMode: "user" },
+  };
+
+  const cameraConstrains = {
+    audio: true,
+    video: { deviceId: { exact: deviceId } },
+  }
   try {
-    myStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: true,
-    });
+    myStream = await navigator.mediaDevices.getUserMedia(
+      deviceId ? cameraConstrains : initialConstrains
+    );
     myFace.srcObject = myStream;
-    await getCameras();
+    if(!deviceId) {
+      await getCameras(); // 맨 처음에만 getCameras() 호출
+    }
   } catch (e) {
     console.log(e);
   }
@@ -54,6 +68,7 @@ function handleMuteClick() {
     muted = false;
   }
 }
+
 // Camera Mute Button
 function handleCameraClick() {
   myStream.getVideoTracks().forEach((track) => (track.enabled = !track.enabled));
@@ -67,5 +82,11 @@ function handleCameraClick() {
   }
 }
 
+// Camera change Button 
+async function handleCameraChange() {
+  await getMedia(cameraSelect.value);
+}
+
 muteBtn.addEventListener("click", handleMuteClick); // 마이크 on/off 리스너
 cameraBtn.addEventListener("click", handleCameraClick); // camera on/off 리스너
+cameraSelect.addEventListener("input", handleCameraChange); // camera 변경 감지
