@@ -22,4 +22,12 @@ instrument(io, {
   auth: false
 });
 
+io.on("connection", (socket) => {
+  socket.on("join_room", (roomName, done) => {
+    socket.join(roomName);
+    done();
+    socket.to(roomName).emit("welcome");
+  })
+})
+
 server.listen(3000);
